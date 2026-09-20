@@ -1,6 +1,16 @@
+"""
+submission date: 23.09.2026
+TODO:
+    1. Dokumente aus dem Ordner data/ einlesen: load_documents(data/) liest und gibt das gelesene zurück, verschiedene loader für pdf und doc
+    2. Inhalte sinnvoll in Chunks aufteilen: split_into_chunks(documents)
+    3. Die Chunks per Embeddings in einer Vektordatenbank speichern
+    4. Bei einer Frage relevante Chunks abrufen
+    5. Die gefundenen Inhalte zusammen mit einem LLM zur Antwortgenerierung verwenden
+"""
 from dotenv import load_dotenv
 from langchain_openrouter import ChatOpenRouter
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import os
 
 load_dotenv()
@@ -27,10 +37,27 @@ def load_documents(folder="data"):
         documents.extend(loader.load())
     return documents
 
+def split_into_chunks(documents):
+    """
+    splits documents into smaller, overlapping chunks.
+    RecursiveCharacterTextSplitter prefers to break at paragraph/sentence
+    boundaries instead of cutting mid-word.
+    chunk_size = 800: reasonable middle ground for texts in this dataset,
+    which are pretty technical.
+    chunk_overlap = 100: prevents sentences from being cut off at chunk
+    boundaries.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 800,
+            chunk_overlap = 100,
+    )
+    return splitter.split_documents(documents)
 
 def main():
     docs = load_documents()
+    chunks = split_into_chunks(docs)
     print(f"{len(docs)} document pages loaded.")
+    print(f"{len(chunks)} chunks created.")
     messages = [
         (
             "system",
