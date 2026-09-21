@@ -1,9 +1,10 @@
 """
-submission date: 23.09.2026
+submission date: 23.09.2026 (wedn)
+zoom call: 24.09.2026, 15:00-16:00 (thur)
 TODO:
-    1. Dokumente aus dem Ordner data/ einlesen: load_documents(data/) liest und gibt das gelesene zurück, verschiedene loader für pdf und doc
-    2. Inhalte sinnvoll in Chunks aufteilen: split_into_chunks(documents)
-    3. Die Chunks per Embeddings in einer Vektordatenbank speichern
+    1. Dokumente aus dem Ordner data/ einlesen: load_documents(data/) liest und gibt das gelesene zurück, verschiedene loader für pdf (PyPDFLoader) und doc (Docx2txtLoader)
+    2. Inhalte sinnvoll in Chunks aufteilen: split_into_chunks(documents) mit RecursiveCharacterTextSplitter
+    3. Die Chunks per Embeddings in einer Vektordatenbank speichern mit FastEmbedEmbeddings und Chroma
     4. Bei einer Frage relevante Chunks abrufen
     5. Die gefundenen Inhalte zusammen mit einem LLM zur Antwortgenerierung verwenden
 """
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from langchain_openrouter import ChatOpenRouter
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_community.vectorstores import Chroma
 import os
 
 load_dotenv()
@@ -53,11 +56,27 @@ def split_into_chunks(documents):
     )
     return splitter.split_documents(documents)
 
+def build_vector_store(chunks):
+    """
+    converts each chunk into an embedding vector and stores it in a local
+    chroma vector store.
+    model choice: intfloat/multilingual-eg-large via fastembed (ONNX-based,
+    no PyTorch required). Multilingual because the source documents are in
+    english but questions are asked in german.
+    """
+    embeddings = FastEmbedEmbeddings(
+            model_name = "intfloat/multilingual-e5-large"
+    )
+    return Chroma.from_documents(chunks, embeddings)
+
 def main():
     docs = load_documents()
     chunks = split_into_chunks(docs)
     print(f"{len(docs)} document pages loaded.")
     print(f"{len(chunks)} chunks created.")
+    vector_store = build_vector_store(chunks)
+    print("Vector store built successfully")
+    """
     messages = [
         (
             "system",
@@ -67,6 +86,7 @@ def main():
     ]
     ai_msg = model.invoke(messages)
     print(ai_msg.content)
+    """
 
 
 if __name__ == "__main__":
