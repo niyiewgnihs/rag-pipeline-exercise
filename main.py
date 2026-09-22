@@ -79,12 +79,6 @@ def split_into_chunks(documents):
     if not chunks:
         raise RuntimeError("Splitting produced no chunks - check that the source documents contain extractble text.")
 
-    # print("\n---------- example chunk ----------")
-    # example_chunk = chunks[15] if len(chunks) > 15 else chunks[0]
-    # print(f"source: {Path(example_chunk.metadata.get('source', '')).name}")
-    # print(f"content: \n{example_chunk.page_content}")
-    # print("------------------------------------")
-   
     return chunks
     
 def build_vector_store(chunks):
@@ -106,8 +100,6 @@ def build_vector_store(chunks):
     """
     embeddings = FastEmbedEmbeddings(
             model_name = "intfloat/multilingual-e5-large"
-            # model_name = "intfloat/multilingual-e5-small"
-            # model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
     store = Chroma.from_documents(chunks, embeddings)
     sample_vector = embeddings.embed_query(chunks[0].page_content)
@@ -125,7 +117,7 @@ def answer_question(vector_store, question: str, k: int = 4) -> str:
     instead of falling back on its own (possibly outdated or wrong) knowledge.
     
     the free OpenRouter models can be overloaded (see README), so the LLM call is wrapped to fail gracefully instead of
-    crashing the REPL loop in main(). also catches the weird moderation string "User Safety: safe".
+    crashing the main loop. also catches the occasional moderation string "User Safety: safe".
     """
     results = vector_store.similarity_search(question, k=k)
     context = "\n\n".join(doc.page_content for doc in results)
@@ -162,19 +154,12 @@ def main() -> None:
     vector_store = build_vector_store(chunks)
     print("Vector store ready.")
 
-    print("\nAsk your question (or type 'exit' to quit):") # Type 'debug db' to inspect vectors:
+    print("\nAsk your question (or type 'exit' to quit):")
     while True:
         question = input("\n> ")
         if question.lower() == "exit":
             break
         
-        # if question.lower() == "debug db":
-        #    db_data = vector_store.get(include=['embeddings', 'documents', 'metadatas'])
-        #    print(f"\nTotal entries in Chroma DB: {len(db_data['ids'])}")
-        #    print(f"Source of the first entry: {db_data['metadatas'][0]['source']}")
-        #    print(f"Vector of the first entry (first 10 of 1024 dimensions):\n{db_data['embeddings'][0][:10]}")
-        #    continue
-
         answer = answer_question(vector_store, question)
         print(f"\n{answer}")
 
